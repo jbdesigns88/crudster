@@ -1,0 +1,22 @@
+{
+    "name": "jbuapim/crudster",
+    "authors": [
+        {
+            "name": "Joseph Buapim",
+            "email": "jbuapim@gmail.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4":{
+            "Jbuapim\\Crudster\\":"src/"
+        }
+    }, 
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jbuapim\\Crudster\\CrudsterServiceProvider"
+            ] 
+        }
+    }
+}
