@@ -22,8 +22,8 @@ use Throwable;
     }
 
     public static function event(){
-        $results = get_class_methods(new Crudster([])); 
-        return $results;
+        $results = [get_class_methods(new Crudster([])),"The ish works"]; 
+        return "The ish works";
     }
 
     /**
