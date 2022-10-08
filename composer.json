@@ -1,12 +1,15 @@
 {
     "name": "jbuapim/crudster",
+    "description": "A package to automate crud functionality",
+    "type": "library",
+    "license": "MIT",
     "authors": [
         {
-            "name": "Joseph Buapim",
-            "email": "jbuapim@gmail.com"
+            "name": "jbdesigns88",
+            "email": "jbdesigns88@gmail.com"
         }
     ],
-    "require": {},
+
     "minimum-stability": "dev",
     "autoload": {
         "psr-4":{
@@ -19,5 +22,10 @@
                 "Jbuapim\\Crudster\\CrudsterServiceProvider"
             ] 
         }
-    }
+    },
+    "require": {}
 }
+
+
+
+
