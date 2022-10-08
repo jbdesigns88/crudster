@@ -22,7 +22,8 @@ use Throwable;
     }
 
     public static function event(){
-        return get_class_methods(new Crudster([]));
+        $results = get_class_methods(new Crudster([])); 
+        return $results;
     }
 
     /**
