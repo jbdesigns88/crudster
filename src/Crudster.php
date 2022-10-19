@@ -1,9 +1,11 @@
 <?php
 namespace Jbuapim\Crudster;
+
+use Exception;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Throwable;
-  class Crudster{
+  abstract class Crudster{
 
     protected $model = null;
     protected $query_results = null;
@@ -15,15 +17,16 @@ use Throwable;
     protected $errors = [];
     protected $baseResource = null; // add resource property to dynamically serve up resources
 
-    public function __construct($relationships = [], $data = [])
+    public function __construct(Model $model = null)
     {
-        $this->relationships = $relationships;
-        $this->setData($data);
+      $this->attachModel($model);
     }
 
     public static function event(){
-        $results = [get_class_methods(new Crudster([])),"The ish works"]; 
-        return "The ish works ddd";
+        $results = [
+            "called_from" => get_called_class()
+        ]; 
+        return $results;
     }
 
     /**
@@ -43,20 +46,20 @@ use Throwable;
      */
     public function attachModel(Model $model = null)
     {
-        if ($model !== null) {
+        if($model === null){ throw new Exception("No Model passed.");}
+    
             $this->model = $model;
-        }
+            $this->relationships = $model->relationsToArray();
+       
 
         // TODO might wanna throw error here
 
-        return $this;
+        return $model;
     }
 
     public function create()
     {
-        // TODO change to just look at array;
         !empty($this->relationships) ? $this->createWithRelationships() : $this->createWithoutRelationships();
-
         return $this;
     }
 
@@ -71,7 +74,8 @@ use Throwable;
             $created = $this->model::create($data);
             $this->query_results = $this->syncRelationships($created);
         } catch (Throwable $th) {
-            $this->setError("issue updating resource. Please check logs.");
+            // $this->setError("issue updating resource. Please check logs.");
+            $this->setError($th->getMessage());
             Log::error($th);
         }
 
@@ -84,15 +88,15 @@ use Throwable;
      * @param bool $detach
      * @return Model
      */
-    protected function syncRelationships(Model $model, bool $detach = false)
+    protected function syncRelationships(bool $detach = false)
     {
+        $model = $this->model;
         $data = $this->data;
         foreach ($this->relationships as $relationship) {
             if (isset($data[$relationship])) {
                 $relationship_ids = $data[$relationship];
                 !($detach) ? $model->$relationship()->sync($relationship_ids) : $model->$relationship()->detach($relationship_ids);
             }
-
         }
 
         $model->refresh();
@@ -120,7 +124,8 @@ use Throwable;
             $created = $this->model::create($this->getData());
             $this->query_results = $created;
         } catch (Throwable $th) {
-            $this->setError("Error creating resource. Please check logs.");
+            // $this->setError("Error creating resource. Please check logs.");
+            $this->setError($th->getMessage());
             Log::error($th);
         }
     }
@@ -128,40 +133,56 @@ use Throwable;
     /**
      * @return array
      */
-    public function getData(): array
+    public function getData()
     {
-        return $this->data;
+         
+        return !($this->data) ? [] : $this->data ;
     }
 
     /**
      * TODO add any processes and validation to incoming data.
      *
-     * @param array $data
-     * @return void
+     * @param mixed $data
+     * @return $this
      */
-    protected function setData(array $data = [])
+    public function setData(mixed $data = null)
     {
+        
+        if (!($data)){ $this->setError("The data cannot be null");return $this; }
         $this->data = $data;
+        return $this;
     }
-
+    protected function hasRelationships(){
+        return !(empty($this->relationships));
+    }
     /**
-     * @param int $id
+     * @param Illuminate\Database\Eloquent\Model $model
      * @param bool $withRelationship
      * @return $this
      */
-    public function update(int $id, bool $withRelationship = false): self
+    public function update(Model $model = null): self
     {
+       if(!($this->data)){$this->setError("There is no data"); return $this;}
         try {
-            $results = $this->getByColumn($id);
-            if ($results) {
-                $results->update($this->getdata());
+            $this->model = $model;
+            if ($this->model) {
+                $this->model->update($this->data);
+                if(!($this->model->wasChanged())){
+                    $model_keys = implode(", ",array_keys($this->model->toArray()));
+                    $non_existiing_keys = implode(", ",array_diff(array_keys($this->data),array_keys($this->model->toArray())));
+                    $this->setError("Columns could not be updated. Check logs for more info.");
+                    Log::error("The following columns are not in the corresponding table {$non_existiing_keys} : Existing Columns: {$model_keys}");
+                    
+                }
+                
+                $this->data = $this->model;
             }
-            $this->query_results = $results;
-            if ($withRelationship) {
-                $this->syncRelationships($results);
+            
+            if ($this->hasRelationships()) {
+                $this->syncRelationships();
             }
         } catch (Throwable $th) {
-            $this->setError("issue updating resource. Please check logs.");
+            $this->setError($th->getMessage());
             Log::error($th);
         }
 
@@ -185,20 +206,20 @@ use Throwable;
         return $found;
     }
 
-    public function get($id = -1)
+    public function get($id)
     {
         $found = $this->getByColumn($id);
         if (!isset($found)) {
             $this->setError("The resource with id: {$id} cannot be found. ");
         }
-        $this->query_results = $found;
+        $this->data = $found;
         return $this;
     }
 
     public function getAll($paginate = true)
     {
         $this->collection = true;
-        $this->query_results = $paginate ? $this->model::paginate() : $this->model::all();
+        $this->data = $paginate ? $this->model::paginate() : $this->model::all();
         return $this;
     }
 
@@ -220,11 +241,7 @@ use Throwable;
 
     protected function withResource()
     {
-        if (isset($this->query_results)) {
-
-            $this->data = !($this->collection) ? new $this->baseResource($this->query_results) : $this->baseResource::collection($this->query_results);
-
-        }
+         $this->data = !($this->collection) ? new $this->baseResource($this->data) : $this->baseResource::collection($this->data);
     }
 
     public function loadRelationships()
