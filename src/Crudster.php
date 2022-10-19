@@ -1,4 +1,5 @@
 <?php
+
 namespace Jbuapim\Crudster;
 
 use Exception;
@@ -23,8 +24,12 @@ use Throwable;
     }
 
     public static function event(){
+        date_default_timezone_set("America/New_York");
+        $d = date("h:i:sa");
+        $c = get_called_class();
+
         $results = [
-            "called_from" => get_called_class()
+            "update" => "{$c} {$d}"
         ]; 
         return $results;
     }
