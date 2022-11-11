@@ -3,6 +3,7 @@
     "description": "A package to automate crud functionality",
     "type": "library",
     "license": "MIT",
+    "version": "1.0.0",
     "authors": [
         {
             "name": "jbdesigns88",
